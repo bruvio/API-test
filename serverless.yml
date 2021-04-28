@@ -1,0 +1,84 @@
+service: dynamodb-api
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: us-east-1
+  lambdaHashingVersion: 20201221
+  stage: dev
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iam: 
+    role: 
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+functions:
+  create:
+    handler: handler.create
+    events:
+      - http:
+          path: VIN/create
+          method: post
+
+  get:
+    handler: handler.get
+    events:
+      - http:
+          path: VIN/get/{VIN}
+          method: get
+
+  all:
+    handler: handler.list
+    events:
+      - http:
+          path: VIN/list
+          method: get
+
+  update:
+    handler: handler.update
+    events:
+      - http:
+          path: VIN/update/{VIN}
+          method: put
+
+  delete:
+    handler: handler.delete
+    events:
+      - http:
+          path: VIN/delete/{VIN}
+          method: delete
+
+resources:
+  Resources:
+    VINDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: VIN
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: VIN
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+
+plugins:
+- serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux
